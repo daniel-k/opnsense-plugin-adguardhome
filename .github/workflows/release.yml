@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   freebsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: FreeBSD package build
     permissions:
       contents: write
@@ -39,9 +39,13 @@ jobs:
             freebsd-14_3-downloads-v1-
 
       - name: Build adguardhome and os-adguardhome
-        uses: vmactions/freebsd-vm@v1
+        # NOTE: @v1 (currently v1.5.0) fails to provision the FreeBSD VM on
+        # GitHub runners; pinned to the revision vmactions' own green CI uses.
+        uses: vmactions/freebsd-vm@1e881ae96fb58a8c6f99d7341b4ab82d14522dbe
         with:
           release: "14.3"
+          usesh: true
+          mem: 4096
           prepare: |
             set -eux
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"

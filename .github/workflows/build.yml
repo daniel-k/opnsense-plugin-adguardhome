@@ -12,7 +12,7 @@ permissions:
 
 jobs:
   freebsd:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     name: FreeBSD package build
     permissions:
       contents: read
@@ -39,9 +39,14 @@ jobs:
       - name: Build adguardhome and os-adguardhome
         id: vm
         continue-on-error: true
-        uses: vmactions/freebsd-vm@v1
+        # NOTE: the floating tag @v1 currently resolves to v1.5.0, whose FreeBSD
+        # VM fails to provision on GitHub runners. Pinned to the exact revision
+        # that vmactions' own green CI uses, with the same knobs (usesh + mem).
+        uses: vmactions/freebsd-vm@1e881ae96fb58a8c6f99d7341b4ab82d14522dbe
         with:
           release: "14.3"
+          usesh: true
+          mem: 4096
           # All setup + build run here (as root) and are captured to build.log.
           # The script always exits 0 so the VM workspace (with build.log and
           # build.status) is copied back even on failure; a later host step
