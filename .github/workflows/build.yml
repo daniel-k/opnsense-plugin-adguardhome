@@ -62,27 +62,26 @@ jobs:
                 "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
                 -d @/tmp/p.json >/dev/null 2>&1 || true
             }
+            sysinfo() { printf 'df:\n%s\nmem(physmem bytes): %s\ncpus: %s\n' "$(df -h)" "$(sysctl -n hw.physmem)" "$(sysctl -n hw.ncpu)"; }
             pkg install -y curl jq >/dev/null 2>&1 || true
-            report "DIAG boot-ok run ${GITHUB_RUN_ID}" "VM booted; curl/jq installed; script is running. kvm/mem OK."
+            report "DIAG boot-ok run ${GITHUB_RUN_ID}" "$(sysinfo)"
+            pkg update -f >/tmp/build.log 2>&1; report "DIAG s1-pkgupdate rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)"
+            pkg install -y git >>/tmp/build.log 2>&1; report "DIAG s2-git rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)"
+            rm -rf /usr/ports
+            timeout 900 git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports >>/tmp/build.log 2>&1
+            report "DIAG s3-clone rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)$(printf '\n---clone tail---\n%s' "$(tail -c 20000 /tmp/build.log)")"
             (
               set -eux
               mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
-              pkg update -f
-              pkg install -y git
-              if [ ! -d /usr/ports/.git ]; then
-                rm -rf /usr/ports
-                git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
-              fi
               rm -rf /usr/ports/distfiles
               ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
               rm -rf /var/cache/pkg
               ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
               ./scripts/build-packages.sh
-            ) > /tmp/build.log 2>&1
+            ) >/tmp/build.log 2>&1
             RC=$?
             echo "${RC}" > "${GITHUB_WORKSPACE}/build.status"
-            cp /tmp/build.log "${GITHUB_WORKSPACE}/build.log" 2>/dev/null || true
-            report "DIAG build-done rc=${RC} run ${GITHUB_RUN_ID}" "$(printf '```\n%s\n```' "$(tail -c 50000 /tmp/build.log)")"
+            report "DIAG s4-build rc=${RC} ${GITHUB_RUN_ID}" "$(printf '```\n%s\n```' "$(tail -c 45000 /tmp/build.log)")"
             exit 0
 
       - name: Evaluate build result (temporary diagnostic)
