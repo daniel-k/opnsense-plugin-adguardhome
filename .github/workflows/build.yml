@@ -32,9 +32,9 @@ jobs:
           path: |
             .ci-cache/distfiles
             .ci-cache/pkg
-          key: freebsd-14_3-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
+          key: freebsd-14_4-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
           restore-keys: |
-            freebsd-14_3-downloads-v1-
+            freebsd-14_4-downloads-v1-
 
       - name: Build adguardhome and os-adguardhome
         id: vm
@@ -46,7 +46,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         with:
-          release: "14.3"
+          release: "14.4"
           usesh: true
           mem: 6144
           envs: 'GH_TOKEN GITHUB_REPOSITORY GITHUB_RUN_ID'
