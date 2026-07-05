@@ -63,25 +63,37 @@ jobs:
                 -d @/tmp/p.json >/dev/null 2>&1 || true
             }
             sysinfo() { printf 'df:\n%s\nmem(physmem bytes): %s\ncpus: %s\n' "$(df -h)" "$(sysctl -n hw.physmem)" "$(sysctl -n hw.ncpu)"; }
+            logtail() { printf '```\n%s\n```' "$(tail -c 40000 "$1" 2>/dev/null)"; }
             pkg install -y curl jq >/dev/null 2>&1 || true
-            report "DIAG boot-ok run ${GITHUB_RUN_ID}" "$(sysinfo)"
-            pkg update -f >/tmp/build.log 2>&1; report "DIAG s1-pkgupdate rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)"
-            pkg install -y git >>/tmp/build.log 2>&1; report "DIAG s2-git rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)"
+            report "DIAG boot-ok ${GITHUB_RUN_ID}" "$(sysinfo)"
+            cd "${GITHUB_WORKSPACE}"
+            pkg update -f >/tmp/l 2>&1
+            pkg install -y git >>/tmp/l 2>&1
             rm -rf /usr/ports
-            timeout 900 git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports >>/tmp/build.log 2>&1
-            report "DIAG s3-clone rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)$(printf '\n---clone tail---\n%s' "$(tail -c 20000 /tmp/build.log)")"
-            (
-              set -eux
-              mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
-              rm -rf /usr/ports/distfiles
-              ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
-              rm -rf /var/cache/pkg
-              ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
-              ./scripts/build-packages.sh
-            ) >/tmp/build.log 2>&1
-            RC=$?
+            timeout 900 git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports >>/tmp/l 2>&1
+            report "DIAG clone rc=$? ${GITHUB_RUN_ID}" "$(sysinfo)"
+            mkdir -p .ci-cache/distfiles .ci-cache/pkg
+            rm -rf /usr/ports/distfiles; ln -s "$PWD/.ci-cache/distfiles" /usr/ports/distfiles
+            rm -rf /var/cache/pkg; ln -s "$PWD/.ci-cache/pkg" /var/cache/pkg
+
+            # ---- inline build (mirrors scripts/build-packages.sh) with markers ----
+            report "DIAG s4a portbuild-start ${GITHUB_RUN_ID}" "starting make package for ports/www/adguardhome"
+            ( set -eux; make -C ports/www/adguardhome clean package BATCH=yes PACKAGES="$PWD/artifacts" ) >/tmp/s4a 2>&1
+            RC=$?; report "DIAG s4a portbuild rc=${RC} ${GITHUB_RUN_ID}" "$(logtail /tmp/s4a)"
+            [ "$RC" = 0 ] || exit 0
+
+            PKG=$(find "$PWD/artifacts/All" -maxdepth 1 -name 'adguardhome-*.pkg' | head -1)
+            ( set -eux; pkg add -f "$PKG" ) >/tmp/s4b 2>&1
+            RC=$?; report "DIAG s4b pkgadd rc=${RC} ${GITHUB_RUN_ID}" "pkg=$PKG"$'\n'"$(logtail /tmp/s4b)"
+            [ "$RC" = 0 ] || exit 0
+
+            ( set -eux; rm -rf dns/adguardhome/work; make -C dns/adguardhome _PLUGIN_DEVEL= package ) >/tmp/s4c 2>&1
+            RC=$?; report "DIAG s4c pluginbuild rc=${RC} ${GITHUB_RUN_ID}" "$(logtail /tmp/s4c)"
+            [ "$RC" = 0 ] || exit 0
+
+            ( set -eux; cp dns/adguardhome/work/pkg/*.pkg "$PWD/artifacts/All/"; pkg repo "$PWD/artifacts/All"; pkg config ABI > "$PWD/artifacts/ABI" ) >/tmp/s4d 2>&1
+            RC=$?; report "DIAG s4d finalize rc=${RC} ${GITHUB_RUN_ID}" "$(logtail /tmp/s4d)"
             echo "${RC}" > "${GITHUB_WORKSPACE}/build.status"
-            report "DIAG s4-build rc=${RC} ${GITHUB_RUN_ID}" "$(printf '```\n%s\n```' "$(tail -c 45000 /tmp/build.log)")"
             exit 0
 
       - name: Evaluate build result (temporary diagnostic)
