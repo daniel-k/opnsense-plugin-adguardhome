@@ -170,7 +170,7 @@ automatically after a cache miss.
 
 Cache key version is defined in both `.github/workflows/build.yml` and
 `.github/workflows/release.yml` as:
-`freebsd-14_3-downloads-v1-...`
+`freebsd-14_4-downloads-v1-...`
 
 To force a fresh cache generation, bump the `v1` part (for example to `v2`),
 commit, and push (keep both workflow files in sync). The first run after the
@@ -179,7 +179,7 @@ again.
 
 When to refresh on purpose:
 
-- after changing FreeBSD release in CI (for example `14.3` -> `14.4`)
+- after changing FreeBSD release in CI (for example `14.4` -> `14.5`)
 - after major dependency/toolchain shifts that change many downloads
 - when cache content appears stale/corrupt (unexpected fetch/checksum failures
   that disappear after retry)

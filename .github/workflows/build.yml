@@ -14,9 +14,6 @@ jobs:
   freebsd:
     runs-on: ubuntu-24.04
     name: FreeBSD package build
-    permissions:
-      contents: read
-      issues: write
 
     steps:
       - name: Checkout
@@ -37,84 +34,32 @@ jobs:
             freebsd-14_4-downloads-v1-
 
       - name: Build adguardhome and os-adguardhome
-        id: vm
-        continue-on-error: true
-        # NOTE: the floating tag @v1 currently resolves to v1.5.0, whose FreeBSD
-        # VM fails to provision on GitHub runners. Pinned to the exact revision
-        # that vmactions' own green CI uses, with the same knobs (usesh + mem).
+        # Pinned to the exact revision vmactions' own green CI uses: the floating
+        # @v1 tag (v1.5.0) currently fails to provision the FreeBSD VM.
         uses: vmactions/freebsd-vm@1e881ae96fb58a8c6f99d7341b4ab82d14522dbe
-        env:
-          GH_TOKEN: ${{ github.token }}
         with:
           release: "14.4"
           usesh: true
           mem: 6144
-          envs: 'GH_TOKEN GITHUB_REPOSITORY GITHUB_RUN_ID'
-          # All setup + build run here (as root), captured to build.log. Because
-          # workspace copyback only happens on a clean VM run, we ALSO report the
-          # log from inside the VM (curl -> GitHub issue) so a failure is visible
-          # even if copyback is skipped. Always exit 0 so copyback still tries.
-          run: |
-            set +e  # vmactions runs this under `sh -e`; disable so a failing build command doesn't abort before we capture its output
-            report() { # $1=title $2=body
-              jq -n --arg t "$1" --arg b "$2" '{title:$t, body:$b}' > /tmp/p.json 2>/dev/null || return 0
-              curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
-                -d @/tmp/p.json >/dev/null 2>&1 || true
-            }
-            sysinfo() { printf 'df:\n%s\nmem(physmem bytes): %s\ncpus: %s\n' "$(df -h)" "$(sysctl -n hw.physmem)" "$(sysctl -n hw.ncpu)"; }
-            logtail() { printf '```\n%s\n```' "$(tail -c 50000 "$1" 2>/dev/null)"; }
-            pkg install -y curl jq >/dev/null 2>&1 || true
-            cd "${GITHUB_WORKSPACE}"
-            pkg update -f >/tmp/l 2>&1
-            pkg install -y git >>/tmp/l 2>&1
-            rm -rf /usr/ports
-            timeout 900 git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports >>/tmp/l 2>&1
-            mkdir -p .ci-cache/distfiles .ci-cache/pkg
-            rm -rf /usr/ports/distfiles; ln -s "$PWD/.ci-cache/distfiles" /usr/ports/distfiles
-            rm -rf /var/cache/pkg; ln -s "$PWD/.ci-cache/pkg" /var/cache/pkg
-
-            # ---- run the REAL build script end-to-end ----
-            ./scripts/build-packages.sh >/tmp/build.log 2>&1
-            RC=$?
-            echo "${RC}" > "${GITHUB_WORKSPACE}/build.status"
-            if [ "${RC}" = 0 ]; then
-              report "DIAG BUILD-OK rc=0 ${GITHUB_RUN_ID}" "$(printf 'artifacts:\n%s\n\n%s' "$(ls -1 artifacts/All 2>/dev/null)" "$(logtail /tmp/build.log)")"
-            else
-              report "DIAG BUILD-FAIL rc=${RC} ${GITHUB_RUN_ID}" "$(logtail /tmp/build.log)"
+          prepare: |
+            set -eux
+            mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
+            # The workspace is owned by the host 'runner' user but git runs as
+            # root in the VM; allow it so Scripts/version.sh can read the commit.
+            git config --global --add safe.directory '*'
+            pkg update -f
+            pkg install -y git
+            if [ ! -d /usr/ports/.git ]; then
+              rm -rf /usr/ports
+              git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports
             fi
-            exit 0
-
-      - name: Evaluate build result (temporary diagnostic)
-        if: always()
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          echo "vmactions step outcome: ${{ steps.vm.outcome }}"
-          STATUS="$(cat build.status 2>/dev/null || echo missing)"
-          echo "build.status = ${STATUS}"
-          if [ ! -f build.status ]; then
-            echo "build.status missing -> my run script never completed inside the VM (VM provisioning/boot or copyback failed)."
-          fi
-          echo "===== build.log (tail 120) ====="
-          tail -n 120 build.log 2>/dev/null || echo "(build.log not found)"
-          if [ "${STATUS}" = "0" ]; then
-            echo "build succeeded"
-            exit 0
-          fi
-          BODY="$(tail -c 55000 build.log 2>/dev/null || echo '(build.log not found)')"
-          HEADER="vmactions outcome: ${{ steps.vm.outcome }} | build.status: ${STATUS}"
-          jq -n --arg t "CI diagnostic: build failure run ${{ github.run_id }} (status ${STATUS})" \
-                --arg h "${HEADER}" --arg b "${BODY}" \
-                '{title:$t, body:("**"+$h+"**\n\n```\n"+$b+"\n```")}' > payload.json
-          curl -fsS -X POST \
-            -H "Authorization: Bearer ${GH_TOKEN}" \
-            -H "Accept: application/vnd.github+json" \
-            "https://api.github.com/repos/${{ github.repository }}/issues" \
-            -d @payload.json > issue.json
-          echo "created diagnostic issue: $(jq -r .html_url issue.json)"
-          exit 1
+            rm -rf /usr/ports/distfiles
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
+            rm -rf /var/cache/pkg
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
+          run: |
+            set -eux
+            ./scripts/build-packages.sh
 
       - name: Upload packages
         uses: actions/upload-artifact@v4

@@ -45,15 +45,16 @@ jobs:
         with:
           release: "14.4"
           usesh: true
-          mem: 4096
+          mem: 6144
           prepare: |
             set -eux
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
+            git config --global --add safe.directory '*'
             pkg update -f
             pkg install -y git
             if [ ! -d /usr/ports/.git ]; then
               rm -rf /usr/ports
-              git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
+              git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports
             fi
             rm -rf /usr/ports/distfiles
             ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
