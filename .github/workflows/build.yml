@@ -55,7 +55,15 @@ jobs:
           # log from inside the VM (curl -> GitHub issue) so a failure is visible
           # even if copyback is skipped. Always exit 0 so copyback still tries.
           run: |
+            report() { # $1=title $2=body
+              jq -n --arg t "$1" --arg b "$2" '{title:$t, body:$b}' > /tmp/p.json 2>/dev/null || return 0
+              curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
+                -d @/tmp/p.json >/dev/null 2>&1 || true
+            }
             pkg install -y curl jq >/dev/null 2>&1 || true
+            report "DIAG boot-ok run ${GITHUB_RUN_ID}" "VM booted; curl/jq installed; script is running. kvm/mem OK."
             (
               set -eux
               mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
@@ -74,15 +82,7 @@ jobs:
             RC=$?
             echo "${RC}" > "${GITHUB_WORKSPACE}/build.status"
             cp /tmp/build.log "${GITHUB_WORKSPACE}/build.log" 2>/dev/null || true
-            if [ "${RC}" != "0" ]; then
-              jq -n --arg t "in-VM build failure (rc ${RC}) run ${GITHUB_RUN_ID}" \
-                    --arg b "$(tail -c 50000 /tmp/build.log)" \
-                    '{title:$t, body:("```\n"+$b+"\n```")}' > /tmp/payload.json
-              curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
-                -H "Accept: application/vnd.github+json" \
-                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
-                -d @/tmp/payload.json >/dev/null 2>&1 || true
-            fi
+            report "DIAG build-done rc=${RC} run ${GITHUB_RUN_ID}" "$(printf '```\n%s\n```' "$(tail -c 50000 /tmp/build.log)")"
             exit 0
 
       - name: Evaluate build result (temporary diagnostic)
