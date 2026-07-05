@@ -43,15 +43,19 @@ jobs:
         # VM fails to provision on GitHub runners. Pinned to the exact revision
         # that vmactions' own green CI uses, with the same knobs (usesh + mem).
         uses: vmactions/freebsd-vm@1e881ae96fb58a8c6f99d7341b4ab82d14522dbe
+        env:
+          GH_TOKEN: ${{ github.token }}
         with:
           release: "14.3"
           usesh: true
-          mem: 4096
-          # All setup + build run here (as root) and are captured to build.log.
-          # The script always exits 0 so the VM workspace (with build.log and
-          # build.status) is copied back even on failure; a later host step
-          # evaluates build.status and fails the job if needed.
+          mem: 6144
+          envs: 'GH_TOKEN GITHUB_REPOSITORY GITHUB_RUN_ID'
+          # All setup + build run here (as root), captured to build.log. Because
+          # workspace copyback only happens on a clean VM run, we ALSO report the
+          # log from inside the VM (curl -> GitHub issue) so a failure is visible
+          # even if copyback is skipped. Always exit 0 so copyback still tries.
           run: |
+            pkg install -y curl jq >/dev/null 2>&1 || true
             (
               set -eux
               mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
@@ -66,8 +70,19 @@ jobs:
               rm -rf /var/cache/pkg
               ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
               ./scripts/build-packages.sh
-            ) > "${GITHUB_WORKSPACE}/build.log" 2>&1
-            echo "$?" > "${GITHUB_WORKSPACE}/build.status"
+            ) > /tmp/build.log 2>&1
+            RC=$?
+            echo "${RC}" > "${GITHUB_WORKSPACE}/build.status"
+            cp /tmp/build.log "${GITHUB_WORKSPACE}/build.log" 2>/dev/null || true
+            if [ "${RC}" != "0" ]; then
+              jq -n --arg t "in-VM build failure (rc ${RC}) run ${GITHUB_RUN_ID}" \
+                    --arg b "$(tail -c 50000 /tmp/build.log)" \
+                    '{title:$t, body:("```\n"+$b+"\n```")}' > /tmp/payload.json
+              curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "https://api.github.com/repos/${GITHUB_REPOSITORY}/issues" \
+                -d @/tmp/payload.json >/dev/null 2>&1 || true
+            fi
             exit 0
 
       - name: Evaluate build result (temporary diagnostic)
