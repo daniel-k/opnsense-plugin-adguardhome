@@ -76,10 +76,13 @@ it to `80`/`443` — keep it on a free high port.
 
 ## Integrate the repo in OPNsense (automatic updates)
 
-Create a pkg repository file on the firewall:
+Create a pkg repository file on the firewall. **Note:** the OPNsense root shell
+is `tcsh`, which does not support `<<EOF` here-documents. Either switch to a
+POSIX shell first (`sh`) and paste the here-doc:
 
 ```sh
-cat >/usr/local/etc/pkg/repos/adguardhome.conf <<'EOF'
+sh
+cat > /usr/local/etc/pkg/repos/adguardhome.conf <<'EOF'
 adguardhome: {
   url: "https://daniel-k.github.io/opnsense-plugin-adguardhome/${ABI}",
   mirror_type: "none",
@@ -87,12 +90,20 @@ adguardhome: {
   enabled: yes
 }
 EOF
-pkg update -f
+exit
 ```
 
-Then install from the repo:
+…or, to stay in `tcsh`, write it with a single `printf` (the single quotes keep
+`${ABI}` literal so `pkg` — not the shell — expands it):
 
 ```sh
+printf 'adguardhome: {\n  url: "https://daniel-k.github.io/opnsense-plugin-adguardhome/${ABI}",\n  mirror_type: "none",\n  signature_type: "none",\n  enabled: yes\n}\n' > /usr/local/etc/pkg/repos/adguardhome.conf
+```
+
+Then update and install from the repo:
+
+```sh
+pkg update -f
 pkg install os-adguardhome
 ```
 
