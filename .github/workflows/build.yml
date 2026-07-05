@@ -40,40 +40,52 @@ jobs:
         uses: vmactions/freebsd-vm@v1
         with:
           release: "14.3"
-          prepare: |
-            set -eux
-            mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
-            pkg update -f
-            pkg install -y git
-            if [ ! -d /usr/ports/.git ]; then
-              rm -rf /usr/ports
-              git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
-            fi
-            rm -rf /usr/ports/distfiles
-            ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
-            rm -rf /var/cache/pkg
-            ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
-            touch "${GITHUB_WORKSPACE}/prepare_done.marker"
+          # All setup + build run here (as root) and are captured to build.log.
+          # The script always exits 0 so the VM workspace (with build.log and
+          # build.status) is copied back even on failure; a later host step
+          # evaluates build.status and fails the job if needed.
           run: |
-            ( set -eux; ./scripts/build-packages.sh ) > "${GITHUB_WORKSPACE}/build.log" 2>&1
+            (
+              set -eux
+              mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
+              pkg update -f
+              pkg install -y git
+              if [ ! -d /usr/ports/.git ]; then
+                rm -rf /usr/ports
+                git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
+              fi
+              rm -rf /usr/ports/distfiles
+              ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
+              rm -rf /var/cache/pkg
+              ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
+              ./scripts/build-packages.sh
+            ) > "${GITHUB_WORKSPACE}/build.log" 2>&1
+            echo "$?" > "${GITHUB_WORKSPACE}/build.status"
+            exit 0
 
-      - name: Report build log on failure (temporary diagnostic)
-        if: failure()
+      - name: Evaluate build result (temporary diagnostic)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          if [ -f prepare_done.marker ]; then PHASE="prepare COMPLETED -> failure was in build-packages.sh"; else PHASE="prepare did NOT complete -> failure was in VM boot / pkg / ports clone"; fi
-          if [ -f build.log ]; then BODY="$(tail -c 55000 build.log)"; else BODY="(build.log not found)"; fi
-          echo "PHASE: ${PHASE}"
-          jq -n --arg t "CI diagnostic: build failure run ${{ github.run_id }}" \
-                --arg p "${PHASE}" --arg b "${BODY}" \
-                '{title:$t, body:("**"+$p+"**\n\n```\n"+$b+"\n```")}' > payload.json
+          STATUS="$(cat build.status 2>/dev/null || echo missing)"
+          echo "build.status = ${STATUS}"
+          echo "===== build.log (tail 120) ====="
+          tail -n 120 build.log 2>/dev/null || echo "(build.log not found)"
+          if [ "${STATUS}" = "0" ]; then
+            echo "build succeeded"
+            exit 0
+          fi
+          BODY="$(tail -c 55000 build.log 2>/dev/null || echo '(build.log not found)')"
+          jq -n --arg t "CI diagnostic: build failure run ${{ github.run_id }} (status ${STATUS})" \
+                --arg b "${BODY}" \
+                '{title:$t, body:("```\n"+$b+"\n```")}' > payload.json
           curl -fsS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
             "https://api.github.com/repos/${{ github.repository }}/issues" \
             -d @payload.json > issue.json
           echo "created diagnostic issue: $(jq -r .html_url issue.json)"
+          exit 1
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
