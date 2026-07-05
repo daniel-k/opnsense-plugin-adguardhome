@@ -37,6 +37,8 @@ jobs:
             freebsd-14_3-downloads-v1-
 
       - name: Build adguardhome and os-adguardhome
+        id: vm
+        continue-on-error: true
         uses: vmactions/freebsd-vm@v1
         with:
           release: "14.3"
@@ -64,11 +66,16 @@ jobs:
             exit 0
 
       - name: Evaluate build result (temporary diagnostic)
+        if: always()
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          echo "vmactions step outcome: ${{ steps.vm.outcome }}"
           STATUS="$(cat build.status 2>/dev/null || echo missing)"
           echo "build.status = ${STATUS}"
+          if [ ! -f build.status ]; then
+            echo "build.status missing -> my run script never completed inside the VM (VM provisioning/boot or copyback failed)."
+          fi
           echo "===== build.log (tail 120) ====="
           tail -n 120 build.log 2>/dev/null || echo "(build.log not found)"
           if [ "${STATUS}" = "0" ]; then
@@ -76,9 +83,10 @@ jobs:
             exit 0
           fi
           BODY="$(tail -c 55000 build.log 2>/dev/null || echo '(build.log not found)')"
+          HEADER="vmactions outcome: ${{ steps.vm.outcome }} | build.status: ${STATUS}"
           jq -n --arg t "CI diagnostic: build failure run ${{ github.run_id }} (status ${STATUS})" \
-                --arg b "${BODY}" \
-                '{title:$t, body:("```\n"+$b+"\n```")}' > payload.json
+                --arg h "${HEADER}" --arg b "${BODY}" \
+                '{title:$t, body:("**"+$h+"**\n\n```\n"+$b+"\n```")}' > payload.json
           curl -fsS -X POST \
             -H "Authorization: Bearer ${GH_TOKEN}" \
             -H "Accept: application/vnd.github+json" \
