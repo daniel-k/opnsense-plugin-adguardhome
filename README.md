@@ -69,34 +69,43 @@ owned by AdGuard Home; configure it in AdGuard Home's own web UI. Leaving the
 > Seeding a config sidesteps that check entirely, which is how the plugin keeps
 > AdGuard Home unprivileged from the very first start.
 
-### Coexisting with Unbound (recommended topology)
+### Coexisting with Unbound
 
-Keep OPNsense's Unbound as the resolver on port 53 and place AdGuard Home in
-front of it as the filtering layer. Nothing binds 53 except Unbound, and AdGuard
-Home forwards to Unbound for actual resolution:
+AdGuard Home runs on a high port (default `5353`), so it never fights Unbound for
+port 53. There are two sane topologies — pick one. **AdGuard Home is a
+*forwarder*, not a recursive resolver**, so whichever you choose, its upstream is
+a real resolver; never point it at whatever forwards *into* it (that loops).
+
+**Option A — Unbound in front (AdGuard as Unbound's upstream).** Clients keep
+using Unbound on :53 (no NAT tricks); do local overrides in Unbound's UI; AdGuard
+filters and forwards to a public resolver:
 
 ```
-clients ──► AdGuard Home (:5353, filtering)  ──►  Unbound (127.0.0.1:53)  ──► internet
+clients ──► Unbound :53 (overrides) ──► AdGuard Home :5353 (filter) ──► public DNS (e.g. Quad9)
 ```
+- **Unbound → General/Query Forwarding**: forward to `127.0.0.1@5353` (AdGuard).
+- **AdGuard UI → Settings → DNS**: *Upstream DNS* = a **public** resolver
+  (e.g. `9.9.9.9`) — the plugin's seed default. **Not** `127.0.0.1:53` (loop).
+- Note: AdGuard sees all queries as coming from Unbound, so per-client stats /
+  filtering in AdGuard won't work in this layout.
 
-Configure, all in the respective web UIs (this plugin does not do it for you):
+**Option B — AdGuard in front (Unbound as the recursive resolver).** Gives
+per-client filtering in AdGuard and true recursion in Unbound, but AdGuard must
+receive client queries (it's on 5353, so you need a NAT redirect or to point
+clients at it), and its upstream is Unbound:
 
-1. **AdGuard Home UI → Settings → DNS settings**
-   - *DNS server / listen*: a high port, e.g. `5353` (never 53).
-   - *Upstream DNS servers*: `127.0.0.1:53` (i.e. Unbound). Optionally set the
-     bootstrap/fallback DNS to `127.0.0.1:53` as well.
-2. **OPNsense → Services → Unbound DNS**
-   - Leave Unbound listening on 53 for your clients. (Do **not** point Unbound
-     back at AdGuard Home, or you create a resolution loop.)
-3. **Point clients at AdGuard Home's filtering port.** Since AdGuard Home is on
-   `5353`, either:
-   - hand out AdGuard Home's IP as DNS to clients that can use a custom port, or
-   - add a **Firewall → NAT → Port Forward** rule on your LAN that redirects
-     DNS (`53`) to `127.0.0.1:5353` (AdGuard Home), so all client DNS is
-     transparently filtered and Unbound is reached only as AdGuard's upstream.
+```
+clients ──► AdGuard Home :5353 (filter, per-client) ──► Unbound :53 (recursion) ──► internet
+```
+- **AdGuard UI → Settings → DNS**: *Upstream DNS* = `127.0.0.1:53` (Unbound).
+- **Firewall → NAT → Port Forward**: redirect LAN DNS (`53`) to `127.0.0.1:5353`
+  so client DNS is transparently filtered.
+- Leave Unbound on 53 as the recursive resolver; don't point it back at AdGuard.
 
-The admin web port (default `3000`) can collide with the OPNsense GUI if you set
-it to `80`/`443` — keep it on a free high port.
+Either way, set the ports in the plugin (Web/DNS port fields); everything else —
+including the upstream — is set in AdGuard Home's own UI. The admin web port
+(default `3000`) can collide with the OPNsense GUI if set to `80`/`443` — keep it
+on a free high port.
 
 ## Integrate the repo in OPNsense (automatic updates)
 

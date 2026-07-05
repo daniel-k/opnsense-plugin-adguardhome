@@ -67,10 +67,15 @@ if (!file_exists($configpath)) {
           . "  bind_hosts:\n"
           . "    - 0.0.0.0\n"
           . "  port: {$dnsport}\n"
+          // Public upstream by default: loop-safe in both topologies (whether
+          // Unbound forwards to AdGuard, or AdGuard forwards to Unbound). Change
+          // it to taste in AdGuard Home's own UI. Do NOT set 127.0.0.1:53 if
+          // Unbound forwards to AdGuard (that would loop).
           . "  upstream_dns:\n"
-          . "    - 127.0.0.1:53\n"
+          . "    - 9.9.9.9\n"
+          . "    - 149.112.112.112\n"
           . "  bootstrap_dns:\n"
-          . "    - 127.0.0.1:53\n"
+          . "    - 9.9.9.9\n"
           . "schema_version: 34\n";
 
     $dir = dirname($configpath);
