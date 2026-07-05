@@ -14,6 +14,9 @@ jobs:
   freebsd:
     runs-on: ubuntu-latest
     name: FreeBSD package build
+    permissions:
+      contents: read
+      issues: write
 
     steps:
       - name: Checkout
@@ -50,9 +53,27 @@ jobs:
             ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
             rm -rf /var/cache/pkg
             ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
+            touch "${GITHUB_WORKSPACE}/prepare_done.marker"
           run: |
-            set -eux
-            ./scripts/build-packages.sh
+            ( set -eux; ./scripts/build-packages.sh ) > "${GITHUB_WORKSPACE}/build.log" 2>&1
+
+      - name: Report build log on failure (temporary diagnostic)
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if [ -f prepare_done.marker ]; then PHASE="prepare COMPLETED -> failure was in build-packages.sh"; else PHASE="prepare did NOT complete -> failure was in VM boot / pkg / ports clone"; fi
+          if [ -f build.log ]; then BODY="$(tail -c 55000 build.log)"; else BODY="(build.log not found)"; fi
+          echo "PHASE: ${PHASE}"
+          jq -n --arg t "CI diagnostic: build failure run ${{ github.run_id }}" \
+                --arg p "${PHASE}" --arg b "${BODY}" \
+                '{title:$t, body:("**"+$p+"**\n\n```\n"+$b+"\n```")}' > payload.json
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/issues" \
+            -d @payload.json > issue.json
+          echo "created diagnostic issue: $(jq -r .html_url issue.json)"
 
       - name: Upload packages
         uses: actions/upload-artifact@v4
