@@ -1,0 +1,22 @@
+[
+{ type: install
+  message: <<EOM
+AdGuard Home is free software published by AdGuard Software Ltd. under the
+GNU General Public License, version 3 (GPLv3).
+
+This package installs AdGuard's official, unmodified FreeBSD/amd64 release
+binary. A copy of the license is installed at:
+
+  /usr/local/share/licenses/adguardhome/LICENSE
+
+The complete corresponding source code is available from AdGuard's public
+repository. Select the release tag that matches the version shown by
+"pkg info adguardhome":
+
+  https://github.com/AdguardTeam/AdGuardHome
+
+This package and the os-adguardhome OPNsense plugin are community-maintained
+and are NOT affiliated with, sponsored by, or endorsed by AdGuard.
+EOM
+}
+]

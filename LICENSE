@@ -1,0 +1,41 @@
+BSD 2-Clause License
+
+Copyright (c) 2026, Daniel Krebs
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+---
+
+This license covers the original code in this repository: the os-adguardhome
+OPNsense plugin (dns/adguardhome) and the FreeBSD port glue (ports/www/adguardhome).
+
+It does NOT cover:
+
+- AdGuard Home itself (the `adguardhome` package), which is a separate work by
+  AdGuard Software Ltd., licensed under the GNU General Public License v3.0.
+  This repository redistributes AdGuard's official, unmodified FreeBSD/amd64
+  binary. Source: https://github.com/AdguardTeam/AdGuardHome
+- The OPNsense plugin build tooling under Mk/, Templates/, Scripts/ and
+  Keywords/, which is Copyright (c) Franco Fichtner / Deciso B.V. and licensed
+  under the BSD 2-Clause License (see the headers in those files).
+
+See the "License & attribution" section of README.md for details.

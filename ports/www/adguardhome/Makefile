@@ -41,9 +41,15 @@ SUB_LIST=	USER=${ADGUARDHOME_USER}
 # The release tarball extracts to ./AdGuardHome/ (binary + docs + LICENSE).
 WRKSRC=		${WRKDIR}/AdGuardHome
 
-PLIST_FILES=	bin/${PORTNAME}
+PLIST_FILES=	bin/${PORTNAME} \
+		share/licenses/${PORTNAME}/LICENSE
 
 do-install:
 	${INSTALL_PROGRAM} ${WRKSRC}/AdGuardHome ${STAGEDIR}${PREFIX}/bin/${PORTNAME}
+	# Ship the GPLv3 text alongside the binary (GPLv3 requires conveying the
+	# license with the program). AdGuard's tarball provides it as LICENSE.txt.
+	${MKDIR} ${STAGEDIR}${PREFIX}/share/licenses/${PORTNAME}
+	${INSTALL_DATA} ${WRKSRC}/LICENSE.txt \
+		${STAGEDIR}${PREFIX}/share/licenses/${PORTNAME}/LICENSE
 
 .include <bsd.port.mk>

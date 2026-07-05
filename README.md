@@ -305,3 +305,33 @@ To enable publishing, set repository Pages source to **GitHub Actions**.
    hand from the release `checksums.txt` — the distinfo keys are prefixed with
    `adguardhome-<version>/`.)
 3. Commit, then cut a release as above.
+
+## License & attribution
+
+This repository bundles code under several licenses:
+
+- **Original code** — the `os-adguardhome` OPNsense plugin (`dns/adguardhome`)
+  and the FreeBSD port glue (`ports/www/adguardhome`) — is licensed under the
+  **BSD 2-Clause License** (see [`LICENSE`](LICENSE)).
+- **OPNsense plugin build tooling** under `Mk/`, `Templates/`, `Scripts/` and
+  `Keywords/` is Copyright (c) Franco Fichtner / Deciso B.V., **BSD 2-Clause**
+  (see the headers in those files). It is reused unmodified.
+- **AdGuard Home** (the `adguardhome` package) is a separate work by AdGuard
+  Software Ltd., licensed under the **GNU General Public License v3.0**. This
+  repository does not contain AdGuard's source; the port fetches AdGuard's
+  **official, unmodified** FreeBSD/amd64 release binary at build time and
+  repackages it. In line with GPLv3:
+    - the binary is shipped unmodified, with its notices intact;
+    - a copy of the license is installed at
+      `/usr/local/share/licenses/adguardhome/LICENSE`;
+    - the complete corresponding source for the exact version is available at
+      <https://github.com/AdguardTeam/AdGuardHome> (the release tag matching
+      `pkg info adguardhome`).
+
+  The plugin only manages the AdGuard Home service and does not link or combine
+  with its code (mere aggregation under GPLv3 §5), so the plugin's BSD license
+  is unaffected.
+
+> This project is community-maintained and is **not affiliated with, sponsored
+> by, or endorsed by AdGuard**. "AdGuard" and "AdGuard Home" are trademarks of
+> AdGuard Software Ltd., used here only to describe the packaged software.
