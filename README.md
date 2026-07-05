@@ -181,16 +181,26 @@ automatically after a cache miss.
 
 Cache key version is defined in both `.github/workflows/build.yml` and
 `.github/workflows/release.yml` as:
-`freebsd-14_4-downloads-v1-...`
+`freebsd-14_3-downloads-v1-...`
 
 To force a fresh cache generation, bump the `v1` part (for example to `v2`),
 commit, and push (keep both workflow files in sync). The first run after the
 bump is expected to be slower (cold cache). The next runs should be faster
 again.
 
+**Which FreeBSD `release:` to build on:** match the FreeBSD version of your
+target OPNsense (check with `uname -K` / `freebsd-version` on the firewall — e.g.
+`1403000` = 14.3). Building on a *newer* point release than the firewall makes
+`pkg` reject the package (`Newer FreeBSD version for package ...`, needing
+`IGNORE_OSVERSION=yes`) and can break OPNsense GUI plugin updates. Because the
+ports tree HEAD may already flag your (older but still-running) release as EOL,
+`scripts/build-packages.sh` passes `ALLOW_UNSUPPORTED_SYSTEM=yes` — safe here
+since the port only installs a prebuilt static binary. When your OPNsense moves
+to a newer FreeBSD, bump `release:` in both workflows accordingly.
+
 When to refresh on purpose:
 
-- after changing FreeBSD release in CI (for example `14.4` -> `14.5`)
+- after changing FreeBSD release in CI (for example `14.3` -> `14.4`)
 - after major dependency/toolchain shifts that change many downloads
 - when cache content appears stale/corrupt (unexpected fetch/checksum failures
   that disappear after retry)

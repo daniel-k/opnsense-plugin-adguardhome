@@ -29,16 +29,16 @@ jobs:
           path: |
             .ci-cache/distfiles
             .ci-cache/pkg
-          key: freebsd-14_4-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
+          key: freebsd-14_3-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
           restore-keys: |
-            freebsd-14_4-downloads-v1-
+            freebsd-14_3-downloads-v1-
 
       - name: Build adguardhome and os-adguardhome
         # Pinned to the exact revision vmactions' own green CI uses: the floating
         # @v1 tag (v1.5.0) currently fails to provision the FreeBSD VM.
         uses: vmactions/freebsd-vm@1e881ae96fb58a8c6f99d7341b4ab82d14522dbe
         with:
-          release: "14.4"
+          release: "14.3"
           usesh: true
           mem: 6144
           prepare: |

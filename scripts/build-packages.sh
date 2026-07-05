@@ -20,7 +20,13 @@ if [ ! -f /usr/ports/Mk/bsd.port.mk ]; then
 fi
 
 echo "==> Building adguardhome package"
-make -C "${ROOT_DIR}/ports/www/adguardhome" clean package BATCH=yes PACKAGES="${ARTIFACT_ROOT}"
+# ALLOW_UNSUPPORTED_SYSTEM: we build on the same FreeBSD point release as the
+# target OPNsense (so package OSVERSION matches and pkg installs without an
+# IGNORE_OSVERSION prompt), but the ports tree HEAD may already flag that
+# release as EOL. This is safe here: the port only installs a prebuilt static
+# binary + certs, nothing compiled against system headers.
+make -C "${ROOT_DIR}/ports/www/adguardhome" clean package BATCH=yes \
+    ALLOW_UNSUPPORTED_SYSTEM=yes PACKAGES="${ARTIFACT_ROOT}"
 
 ADGUARDHOME_PKG=$(find "${PACKAGES_DIR}" -maxdepth 1 -type f -name 'adguardhome-*.pkg' | head -n 1)
 if [ -z "${ADGUARDHOME_PKG}" ]; then
