@@ -1,7 +1,7 @@
 PORTNAME=	adguardhome
 DISTVERSIONPREFIX=	v
 DISTVERSION=	0.107.77
-PORTREVISION=		2
+PORTREVISION=		3
 CATEGORIES=	www
 MASTER_SITES=	https://github.com/AdguardTeam/AdGuardHome/releases/download/${DISTVERSIONPREFIX}${DISTVERSION}/
 DISTNAME=	AdGuardHome_freebsd_amd64
