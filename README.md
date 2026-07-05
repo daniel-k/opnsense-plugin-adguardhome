@@ -35,15 +35,29 @@ DNS on `5353` and the admin UI on `3000` — so the service stays unprivileged.
 
 ## First-time setup
 
+> **AdGuard Home requires root for its *first* launch.** On FreeBSD, AdGuard
+> Home's first launch (before any `AdGuardHome.yaml` exists) hard-requires
+> `uid 0` — it calls `CanBindPrivilegedPorts()`, which on BSD is literally
+> `getuid() == 0` (portacl/capabilities do not satisfy it). Once a config file
+> exists, that check is skipped and it runs fine unprivileged. So the initial
+> setup is a one-time "run as root, then drop to the unprivileged user" dance.
+
 1. Install `os-adguardhome` (see below) and open `Services -> AdGuard Home`.
-2. Enable the service and **Save**. (Run-as user defaults to `adguardhome`; leave
-   it unless you have a specific reason to change it.)
-3. Click **Open AdGuard Home** (the setup wizard listens on port `3000` by
-   default) and complete the wizard. **In the wizard, set the DNS listen port to
-   a high port such as `5353`** (not 53) and pick a non-privileged admin port
-   (3000 is fine). AdGuard Home writes its config on finish.
-4. If you later change AdGuard Home's admin port inside its own UI, update the
+2. Set **Run As User = `root`**, enable the service, and **Save**.
+3. Click **Open AdGuard Home** (setup wizard on port `3000`) and complete the
+   wizard. **Set the DNS listen port to a high port such as `5353`** (not 53),
+   set a password, and set **Upstream DNS = `127.0.0.1:53`** (Unbound). AdGuard
+   Home writes its config on finish.
+4. Back on the plugin page, set **Run As User = `adguardhome`** and **Save**.
+   The config now exists, so AdGuard Home runs as the dedicated unprivileged
+   account on its high port. (The rc script re-owns the config/work dirs to the
+   run-as user on each start, so this switch is seamless.)
+5. If you later change AdGuard Home's admin port inside its own UI, update the
    plugin's *Web Interface Port* field so the link keeps working.
+
+If you would rather not do the two-step dance, you can simply leave **Run As
+User = `root`** — AdGuard Home will keep working; you just won't get the
+least-privilege benefit.
 
 ### Coexisting with Unbound (recommended topology)
 

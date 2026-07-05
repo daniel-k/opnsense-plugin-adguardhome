@@ -9,7 +9,7 @@
     <id>general.runas</id>
     <label>Run As User</label>
     <type>text</type>
-    <help>System user used to run AdGuard Home. Defaults to the dedicated, unprivileged "adguardhome" account (least privilege). Do not run as root. AdGuard Home must not bind a privileged port (&lt; 1024): set its DNS listen port to a high port (e.g. 5353) inside AdGuard Home's own web UI so it can run unprivileged and coexist with Unbound. See the plugin README.</help>
+    <help>System user used to run AdGuard Home. Defaults to the dedicated, unprivileged "adguardhome" account (least privilege). FIRST-TIME SETUP: AdGuard Home's very first launch must run as "root" (on FreeBSD it hard-requires uid 0 until a config exists) — set this to "root", Save, complete the setup wizard at the web UI (choose a high DNS port like 5353, not 53), then set this back to "adguardhome" and Save to run unprivileged. See the plugin README.</help>
   </field>
   <field>
     <id>general.configpath</id>

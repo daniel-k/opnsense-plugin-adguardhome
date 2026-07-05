@@ -67,18 +67,20 @@ adguardhome_prepare()
 	fi
 
 	# Config directory (AdGuard Home writes AdGuardHome.yaml here itself).
+	# chown -R so the run-as user always owns everything, even after the
+	# run-as user is changed (e.g. root for AdGuard's first-launch check, then
+	# dropped to the unprivileged adguardhome user for steady state).
 	_config_dir=$(dirname "${adguardhome_config}")
 	if [ ! -d "${_config_dir}" ]; then
 		install -d -m 0750 -o "${adguardhome_runas}" -g "${_group}" "${_config_dir}"
 	fi
-	if [ -f "${adguardhome_config}" ]; then
-		chown "${adguardhome_runas}:${_group}" "${adguardhome_config}"
-	fi
+	chown -R "${adguardhome_runas}:${_group}" "${_config_dir}"
 
 	# Working directory (filters, query log, statistics, sessions db).
 	if [ ! -d "${adguardhome_work_dir}" ]; then
 		install -d -m 0750 -o "${adguardhome_runas}" -g "${_group}" "${adguardhome_work_dir}"
 	fi
+	chown -R "${adguardhome_runas}:${_group}" "${adguardhome_work_dir}"
 
 	# Log and pid files, owned by the service account.
 	for _file in "${logfile}" "${pidfile}"; do
