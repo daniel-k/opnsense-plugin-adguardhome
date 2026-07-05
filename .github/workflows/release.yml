@@ -48,6 +48,10 @@ jobs:
           mem: 6144
           prepare: |
             set -eux
+            # See build.yml: build tools come from a newer FreeBSD point release
+            # than this VM; they are 14-ABI and safe, so ignore the OSVERSION
+            # check. Output packages still get this VM's (matching) OSVERSION.
+            export IGNORE_OSVERSION=yes
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
             pkg update -f
             pkg install -y git
@@ -62,6 +66,7 @@ jobs:
             ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
           run: |
             set -eux
+            export IGNORE_OSVERSION=yes
             ./scripts/build-packages.sh
 
       - name: Attach adguardhome packages to GitHub release

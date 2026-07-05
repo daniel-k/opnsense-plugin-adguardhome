@@ -43,6 +43,11 @@ jobs:
           mem: 6144
           prepare: |
             set -eux
+            # We build on the same FreeBSD point release as the target OPNsense
+            # (so output packages get a matching OSVERSION), but FreeBSD's pkg
+            # repo serves build tools (git/perl/python) built on a newer point
+            # release. They are 14-ABI and run fine here, so ignore the check.
+            export IGNORE_OSVERSION=yes
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
             pkg update -f
             pkg install -y git
@@ -60,6 +65,7 @@ jobs:
             ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
           run: |
             set -eux
+            export IGNORE_OSVERSION=yes
             ./scripts/build-packages.sh
 
       - name: Upload packages
