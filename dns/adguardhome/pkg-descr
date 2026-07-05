@@ -1,0 +1,11 @@
+AdGuard Home is a network-wide DNS server that blocks ads and trackers.
+This plugin integrates AdGuard Home into OPNsense and adds a
+"Services -> AdGuard Home" page to enable/disable the service and manage
+its runtime options.
+
+AdGuard Home owns its own configuration (AdGuardHome.yaml) and rewrites it
+whenever you change settings in its web interface, so all filtering, DNS
+and blocklist configuration is done from AdGuard Home's own admin UI. This
+plugin manages the service (rc.conf) and links out to that UI.
+
+WWW: https://adguard.com/en/adguard-home/overview.html

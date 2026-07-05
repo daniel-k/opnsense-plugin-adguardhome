@@ -1,0 +1,64 @@
+name: build-packages
+
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD package build
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Prepare cache directories
+        run: |
+          mkdir -p .ci-cache/distfiles .ci-cache/pkg
+
+      - name: Restore FreeBSD download cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci-cache/distfiles
+            .ci-cache/pkg
+          key: freebsd-14_3-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
+          restore-keys: |
+            freebsd-14_3-downloads-v1-
+
+      - name: Build adguardhome and os-adguardhome
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.3"
+          prepare: |
+            set -eux
+            mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
+            pkg update -f
+            pkg install -y git
+            if [ ! -d /usr/ports/.git ]; then
+              rm -rf /usr/ports
+              git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
+            fi
+            rm -rf /usr/ports/distfiles
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
+            rm -rf /var/cache/pkg
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
+          run: |
+            set -eux
+            ./scripts/build-packages.sh
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-amd64-packages
+          path: |
+            artifacts/All/
+            artifacts/ABI
+          if-no-files-found: error

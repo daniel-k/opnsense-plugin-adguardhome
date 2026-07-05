@@ -1,0 +1,38 @@
+<form>
+  <field>
+    <id>general.enabled</id>
+    <label>Enabled</label>
+    <type>checkbox</type>
+    <help>Enable the AdGuard Home service.</help>
+  </field>
+  <field>
+    <id>general.runas</id>
+    <label>Run As User</label>
+    <type>text</type>
+    <help>System user used to run AdGuard Home. Defaults to the dedicated, unprivileged "adguardhome" account (least privilege). Do not run as root. AdGuard Home must not bind a privileged port (&lt; 1024): set its DNS listen port to a high port (e.g. 5353) inside AdGuard Home's own web UI so it can run unprivileged and coexist with Unbound. See the plugin README.</help>
+  </field>
+  <field>
+    <id>general.configpath</id>
+    <label>Configuration File</label>
+    <type>text</type>
+    <help>Path to AdGuardHome.yaml. AdGuard Home owns and rewrites this file itself; the plugin only points the daemon at it. Change only if you know what you are doing.</help>
+  </field>
+  <field>
+    <id>general.workdir</id>
+    <label>Working Directory</label>
+    <type>text</type>
+    <help>Directory for AdGuard Home runtime data (filters, query log, statistics, sessions database).</help>
+  </field>
+  <field>
+    <id>general.webport</id>
+    <label>Web Interface Port</label>
+    <type>text</type>
+    <help>Port used only to build the "Open AdGuard Home" link below. It does not control which port AdGuard Home listens on — that is configured inside AdGuard Home itself (the initial setup wizard runs on port 3000).</help>
+  </field>
+  <field>
+    <id>general.extraopts</id>
+    <label>Extra Options</label>
+    <type>text</type>
+    <help>Additional command-line arguments passed to the AdGuard Home binary.</help>
+  </field>
+</form>

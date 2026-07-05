@@ -1,0 +1,39 @@
+<model>
+    <mount>//OPNsense/AdGuardHome</mount>
+    <description>AdGuard Home configuration</description>
+    <version>1.0.0</version>
+    <items>
+        <enabled type="BooleanField">
+            <Default>0</Default>
+            <Required>Y</Required>
+        </enabled>
+        <runas type="TextField">
+            <Default>adguardhome</Default>
+            <Required>Y</Required>
+            <Mask>/^[a-z_][a-z0-9_-]*$/</Mask>
+            <ValidationMessage>Enter a valid system user name.</ValidationMessage>
+        </runas>
+        <workdir type="TextField">
+            <Default>/var/db/adguardhome</Default>
+            <Required>Y</Required>
+            <Mask>/^\/[\w.\-\/]+$/</Mask>
+            <ValidationMessage>Enter an absolute path.</ValidationMessage>
+        </workdir>
+        <configpath type="TextField">
+            <Default>/usr/local/etc/adguardhome/AdGuardHome.yaml</Default>
+            <Required>Y</Required>
+            <Mask>/^\/[\w.\-\/]+$/</Mask>
+            <ValidationMessage>Enter an absolute path.</ValidationMessage>
+        </configpath>
+        <webport type="IntegerField">
+            <Default>3000</Default>
+            <Required>Y</Required>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+            <ValidationMessage>Enter a valid TCP port (1-65535).</ValidationMessage>
+        </webport>
+        <extraopts type="TextField">
+            <Default/>
+        </extraopts>
+    </items>
+</model>

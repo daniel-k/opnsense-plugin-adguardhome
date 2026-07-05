@@ -1,0 +1,31 @@
+#!/bin/sh
+#
+# Create a dedicated, unprivileged service account for AdGuard Home.
+#
+# We intentionally do NOT reuse an existing account (e.g. "unbound"): a private
+# account keeps a compromised AdGuard Home process isolated from other services'
+# files (least privilege). The UID/GID are auto-assigned by pw(8) to avoid
+# collisions on the target system. The account has a nologin shell and its home
+# is the runtime work directory.
+
+user=adguardhome
+group=adguardhome
+home=/var/db/adguardhome
+
+case "$2" in
+PRE-INSTALL)
+	if ! /usr/sbin/pw groupshow "${group}" >/dev/null 2>&1; then
+		echo "==> Creating group '${group}'"
+		/usr/sbin/pw groupadd "${group}" || exit 1
+	fi
+	if ! /usr/sbin/pw usershow "${user}" >/dev/null 2>&1; then
+		echo "==> Creating user '${user}'"
+		/usr/sbin/pw useradd "${user}" \
+			-g "${group}" \
+			-c "AdGuard Home" \
+			-d "${home}" \
+			-s /usr/sbin/nologin \
+			-w no || exit 1
+	fi
+	;;
+esac

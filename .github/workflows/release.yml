@@ -1,0 +1,143 @@
+name: release-packages
+
+on:
+  release:
+    types:
+      - published
+
+permissions:
+  contents: read
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD package build
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate release tag
+        run: |
+          set -eu
+          ./scripts/release.sh assert-tag "${{ github.event.release.tag_name }}"
+
+      - name: Prepare cache directories
+        run: |
+          mkdir -p .ci-cache/distfiles .ci-cache/pkg
+
+      - name: Restore FreeBSD download cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            .ci-cache/distfiles
+            .ci-cache/pkg
+          key: freebsd-14_3-downloads-v1-${{ hashFiles('ports/www/adguardhome/Makefile', 'ports/www/adguardhome/distinfo', 'scripts/build-packages.sh') }}
+          restore-keys: |
+            freebsd-14_3-downloads-v1-
+
+      - name: Build adguardhome and os-adguardhome
+        uses: vmactions/freebsd-vm@v1
+        with:
+          release: "14.3"
+          prepare: |
+            set -eux
+            mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
+            pkg update -f
+            pkg install -y git
+            if [ ! -d /usr/ports/.git ]; then
+              rm -rf /usr/ports
+              git clone --depth 1 https://git.FreeBSD.org/ports.git /usr/ports
+            fi
+            rm -rf /usr/ports/distfiles
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/distfiles" /usr/ports/distfiles
+            rm -rf /var/cache/pkg
+            ln -s "${GITHUB_WORKSPACE}/.ci-cache/pkg" /var/cache/pkg
+          run: |
+            set -eux
+            ./scripts/build-packages.sh
+
+      - name: Attach adguardhome packages to GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          TAG="${{ github.event.release.tag_name }}"
+          ADGUARDHOME_PKG="$(find artifacts/All -maxdepth 1 -type f -name 'adguardhome-*.pkg' | head -n 1)"
+          OS_ADGUARDHOME_PKG="$(find artifacts/All -maxdepth 1 -type f -name 'os-adguardhome-*.pkg' | head -n 1)"
+
+          if [ -z "${ADGUARDHOME_PKG}" ] || [ -z "${OS_ADGUARDHOME_PKG}" ]; then
+            echo "error: expected adguardhome and os-adguardhome .pkg files in artifacts/All" >&2
+            exit 1
+          fi
+
+          gh release upload "${TAG}" "${ADGUARDHOME_PKG}" "${OS_ADGUARDHOME_PKG}" --clobber
+
+      - name: Upload packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: freebsd-amd64-packages
+          path: |
+            artifacts/All/
+            artifacts/ABI
+          if-no-files-found: error
+
+  publish-repo:
+    name: Publish pkg repo to GitHub Pages
+    needs: freebsd
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    environment:
+      # `release` workflows run from tags, so a protected default `github-pages`
+      # environment (default-branch-only) rejects the deployment before steps run.
+      name: github-pages-release
+      url: ${{ steps.deploy.outputs.page_url }}
+
+    steps:
+      - name: Download built packages
+        uses: actions/download-artifact@v4
+        with:
+          name: freebsd-amd64-packages
+          path: pkg-artifact
+
+      - name: Build Pages content
+        run: |
+          set -eux
+          ABI="$(cat pkg-artifact/ABI)"
+          DEST="site/${ABI}"
+
+          mkdir -p "${DEST}"
+          cp -a pkg-artifact/All/. "${DEST}/"
+
+          cat > site/index.html <<EOF
+          <!doctype html>
+          <html lang="en">
+          <head>
+            <meta charset="utf-8">
+            <title>opnsense-plugin-adguardhome package repository</title>
+          </head>
+          <body>
+            <p>FreeBSD pkg repository for opnsense-plugin-adguardhome.</p>
+            <p>Release tag: ${{ github.event.release.tag_name }}</p>
+            <p>Repository URL:</p>
+            <pre>https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/\${ABI}</pre>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v4
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site
+
+      - name: Deploy Pages
+        id: deploy
+        uses: actions/deploy-pages@v4

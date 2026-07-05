@@ -1,0 +1,90 @@
+#!/bin/sh
+
+# PROVIDE: adguardhome
+# REQUIRE: DAEMON NETWORKING
+# KEYWORD: shutdown
+#
+# Configuration settings for AdGuard Home in /etc/rc.conf:
+#
+# adguardhome_enable (bool):    Enable AdGuard Home. (default=NO)
+# adguardhome_runas (str):      User to run AdGuard Home as. (default=%%USER%%)
+# adguardhome_config (str):     Configuration file. (default=%%PREFIX%%/etc/adguardhome/AdGuardHome.yaml)
+# adguardhome_work_dir (str):   Working directory for runtime data. (default=/var/db/adguardhome)
+# adguardhome_extra (str):      Extra command line options. (default="")
+#
+# NOTE: AdGuard Home manages its own configuration file at runtime (it rewrites
+# AdGuardHome.yaml whenever you change settings in its web interface). This
+# service only launches the daemon and points it at the config/work directory;
+# it does not template or overwrite the configuration file.
+#
+# The service account is applied with daemon(8) -u (setusercontext), which works
+# for nologin service users such as the dedicated "adguardhome" account. Note
+# that we deliberately do NOT use the rc.subr ${name}_user variable: that would
+# additionally drop privileges via su(1), which fails for accounts whose shell is
+# /usr/sbin/nologin.
+
+. /etc/rc.subr
+
+name="adguardhome"
+desc="Network-wide ads & trackers blocking DNS server"
+rcvar="${name}_enable"
+
+load_rc_config "$name"
+
+: ${adguardhome_enable:="NO"}
+: ${adguardhome_runas:="%%USER%%"}
+: ${adguardhome_config:="%%PREFIX%%/etc/${name}/AdGuardHome.yaml"}
+: ${adguardhome_work_dir:="/var/db/${name}"}
+: ${adguardhome_extra:=""}
+
+logfile="/var/log/${name}.log"
+pidfile="/var/run/${name}.pid"
+
+procname="%%PREFIX%%/bin/${name}"
+command="/usr/sbin/daemon"
+command_args="-c -u ${adguardhome_runas} -o ${logfile} -p ${pidfile} -t \"${desc}\" \
+	${procname} --no-check-update -c ${adguardhome_config} -w ${adguardhome_work_dir} ${adguardhome_extra}"
+
+# AdGuard Home reads $HOME in some code paths; point it at the work directory so
+# it never falls back to a location the service account cannot write to.
+adguardhome_env="HOME=${adguardhome_work_dir} IS_DAEMON=1"
+
+start_precmd="adguardhome_prepare"
+
+adguardhome_prepare()
+{
+	local _config_dir _group
+
+	if ! id -u "${adguardhome_runas}" >/dev/null 2>&1; then
+		echo "${name}: configured user '${adguardhome_runas}' does not exist"
+		return 1
+	fi
+
+	_group="$(id -gn "${adguardhome_runas}" 2>/dev/null)"
+	if [ -z "${_group}" ]; then
+		echo "${name}: unable to determine primary group for '${adguardhome_runas}'"
+		return 1
+	fi
+
+	# Config directory (AdGuard Home writes AdGuardHome.yaml here itself).
+	_config_dir=$(dirname "${adguardhome_config}")
+	if [ ! -d "${_config_dir}" ]; then
+		install -d -m 0750 -o "${adguardhome_runas}" -g "${_group}" "${_config_dir}"
+	fi
+	if [ -f "${adguardhome_config}" ]; then
+		chown "${adguardhome_runas}:${_group}" "${adguardhome_config}"
+	fi
+
+	# Working directory (filters, query log, statistics, sessions db).
+	if [ ! -d "${adguardhome_work_dir}" ]; then
+		install -d -m 0750 -o "${adguardhome_runas}" -g "${_group}" "${adguardhome_work_dir}"
+	fi
+
+	# Log and pid files, owned by the service account.
+	for _file in "${logfile}" "${pidfile}"; do
+		[ -e "${_file}" ] || touch "${_file}"
+		chown "${adguardhome_runas}:${_group}" "${_file}"
+	done
+}
+
+run_rc_command "$1"

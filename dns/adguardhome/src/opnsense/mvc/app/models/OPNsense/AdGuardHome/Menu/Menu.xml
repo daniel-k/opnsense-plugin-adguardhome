@@ -1,0 +1,5 @@
+<menu>
+    <Services>
+        <AdGuardHome VisibleName="AdGuard Home" cssClass="fa fa-shield" url="/ui/adguardhome/general/index"/>
+    </Services>
+</menu>
