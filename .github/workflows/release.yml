@@ -49,9 +49,9 @@ jobs:
           prepare: |
             set -eux
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
-            git config --global --add safe.directory '*'
             pkg update -f
             pkg install -y git
+            git config --global --add safe.directory '*'
             if [ ! -d /usr/ports/.git ]; then
               rm -rf /usr/ports
               git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports

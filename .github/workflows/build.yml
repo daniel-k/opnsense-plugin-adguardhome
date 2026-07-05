@@ -44,11 +44,12 @@ jobs:
           prepare: |
             set -eux
             mkdir -p "${GITHUB_WORKSPACE}/.ci-cache/distfiles" "${GITHUB_WORKSPACE}/.ci-cache/pkg"
-            # The workspace is owned by the host 'runner' user but git runs as
-            # root in the VM; allow it so Scripts/version.sh can read the commit.
-            git config --global --add safe.directory '*'
             pkg update -f
             pkg install -y git
+            # The workspace is owned by the host 'runner' user but git runs as
+            # root in the VM; allow it so Scripts/version.sh can read the commit.
+            # (Must come after git is installed — base FreeBSD has no git.)
+            git config --global --add safe.directory '*'
             if [ ! -d /usr/ports/.git ]; then
               rm -rf /usr/ports
               git clone --depth 1 --filter=blob:none https://git.FreeBSD.org/ports.git /usr/ports
