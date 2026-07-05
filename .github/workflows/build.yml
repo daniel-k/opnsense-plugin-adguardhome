@@ -55,6 +55,7 @@ jobs:
           # log from inside the VM (curl -> GitHub issue) so a failure is visible
           # even if copyback is skipped. Always exit 0 so copyback still tries.
           run: |
+            set +e  # vmactions runs this under `sh -e`; disable so a failing build command doesn't abort before we capture its output
             report() { # $1=title $2=body
               jq -n --arg t "$1" --arg b "$2" '{title:$t, body:$b}' > /tmp/p.json 2>/dev/null || return 0
               curl -fsS -X POST -H "Authorization: Bearer ${GH_TOKEN}" \
