@@ -32,6 +32,22 @@
             <MaximumValue>65535</MaximumValue>
             <ValidationMessage>Enter a valid TCP port (1-65535).</ValidationMessage>
         </webport>
+        <dnsport type="IntegerField">
+            <Default>5353</Default>
+            <Required>Y</Required>
+            <MinimumValue>1</MinimumValue>
+            <MaximumValue>65535</MaximumValue>
+            <ValidationMessage>Enter a valid UDP/TCP port (1-65535).</ValidationMessage>
+        </dnsport>
+        <setupuser type="TextField">
+            <Default>admin</Default>
+            <Required>Y</Required>
+            <Mask>/^[A-Za-z0-9._-]+$/</Mask>
+            <ValidationMessage>Enter a valid user name (letters, digits, . _ -).</ValidationMessage>
+        </setupuser>
+        <setuppassword type="TextField">
+            <Default/>
+        </setuppassword>
         <extraopts type="TextField">
             <Default/>
         </extraopts>

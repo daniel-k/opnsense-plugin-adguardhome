@@ -6,28 +6,46 @@
     <help>Enable the AdGuard Home service.</help>
   </field>
   <field>
+    <id>general.setupuser</id>
+    <label>Admin User</label>
+    <type>text</type>
+    <help>Admin username for the AdGuard Home web interface. Managed by the plugin (AdGuard Home has no UI to change it).</help>
+  </field>
+  <field>
+    <id>general.setuppassword</id>
+    <label>Admin Password</label>
+    <type>password</type>
+    <help>Admin password for the AdGuard Home web interface. Enter a value to set or change it; leave blank to keep the current password. Stored in config.xml and applied (bcrypt-hashed) to AdGuardHome.yaml on Save. If left blank on first setup, the web UI has no login until you set one.</help>
+  </field>
+  <field>
+    <id>general.webport</id>
+    <label>Web Interface Port</label>
+    <type>text</type>
+    <help>TCP port for the AdGuard Home admin web interface. Set here (AdGuard Home has no UI to change its own admin port); also used for the "Open AdGuard Home" link below.</help>
+  </field>
+  <field>
+    <id>general.dnsport</id>
+    <label>DNS Port</label>
+    <type>text</type>
+    <help>UDP/TCP port AdGuard Home listens on for DNS. Keep this a high port (e.g. 5353) so AdGuard Home runs unprivileged and does not clash with Unbound on 53 — point clients or Unbound at this port. (You can also change it in AdGuard Home's own UI, but the plugin re-asserts this value on Save.)</help>
+  </field>
+  <field>
     <id>general.runas</id>
     <label>Run As User</label>
     <type>text</type>
-    <help>System user used to run AdGuard Home. Defaults to the dedicated, unprivileged "adguardhome" account (least privilege). FIRST-TIME SETUP: AdGuard Home's very first launch must run as "root" (on FreeBSD it hard-requires uid 0 until a config exists) — set this to "root", Save, complete the setup wizard at the web UI (choose a high DNS port like 5353, not 53), then set this back to "adguardhome" and Save to run unprivileged. See the plugin README.</help>
+    <help>System user used to run AdGuard Home. Defaults to the dedicated, unprivileged "adguardhome" account (least privilege). Because the plugin seeds a config before first start, AdGuard Home never needs root — leave this as "adguardhome" unless you have a specific reason to change it.</help>
   </field>
   <field>
     <id>general.configpath</id>
     <label>Configuration File</label>
     <type>text</type>
-    <help>Path to AdGuardHome.yaml. AdGuard Home owns and rewrites this file itself; the plugin only points the daemon at it. Change only if you know what you are doing.</help>
+    <help>Path to AdGuardHome.yaml. AdGuard Home owns and rewrites this file; the plugin seeds it and rewrites only the managed keys (admin user/password, web port, DNS port). Change only if you know what you are doing.</help>
   </field>
   <field>
     <id>general.workdir</id>
     <label>Working Directory</label>
     <type>text</type>
     <help>Directory for AdGuard Home runtime data (filters, query log, statistics, sessions database).</help>
-  </field>
-  <field>
-    <id>general.webport</id>
-    <label>Web Interface Port</label>
-    <type>text</type>
-    <help>Port used only to build the "Open AdGuard Home" link below. It does not control which port AdGuard Home listens on — that is configured inside AdGuard Home itself (the initial setup wizard runs on port 3000).</help>
   </field>
   <field>
     <id>general.extraopts</id>

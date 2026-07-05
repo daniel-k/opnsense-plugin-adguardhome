@@ -29,35 +29,45 @@ This plugin is built to run AdGuard Home with **least privilege**:
   particular it does **not** take DNS port 53 — OPNsense's own **Unbound**
   resolver keeps that.
 
-Because AdGuard Home owns its own configuration, its DNS/web listen ports are set
-inside AdGuard Home's own UI. Choose **high (non-privileged) ports** there — e.g.
-DNS on `5353` and the admin UI on `3000` — so the service stays unprivileged.
+The plugin manages the admin credentials and the web/DNS ports for you (see
+below), keeping AdGuard Home on **high, non-privileged ports** so it runs
+unprivileged and coexists with Unbound.
 
 ## First-time setup
 
-> **AdGuard Home requires root for its *first* launch.** On FreeBSD, AdGuard
-> Home's first launch (before any `AdGuardHome.yaml` exists) hard-requires
-> `uid 0` — it calls `CanBindPrivilegedPorts()`, which on BSD is literally
-> `getuid() == 0` (portacl/capabilities do not satisfy it). Once a config file
-> exists, that check is skipped and it runs fine unprivileged. So the initial
-> setup is a one-time "run as root, then drop to the unprivileged user" dance.
+The plugin **seeds `AdGuardHome.yaml` before the first start**, so AdGuard Home
+never needs root and there is no setup wizard to click through:
 
 1. Install `os-adguardhome` (see below) and open `Services -> AdGuard Home`.
-2. Set **Run As User = `root`**, enable the service, and **Save**.
-3. Click **Open AdGuard Home** (setup wizard on port `3000`) and complete the
-   wizard. **Set the DNS listen port to a high port such as `5353`** (not 53),
-   set a password, and set **Upstream DNS = `127.0.0.1:53`** (Unbound). AdGuard
-   Home writes its config on finish.
-4. Back on the plugin page, set **Run As User = `adguardhome`** and **Save**.
-   The config now exists, so AdGuard Home runs as the dedicated unprivileged
-   account on its high port. (The rc script re-owns the config/work dirs to the
-   run-as user on each start, so this switch is seamless.)
-5. If you later change AdGuard Home's admin port inside its own UI, update the
-   plugin's *Web Interface Port* field so the link keeps working.
+2. Set the **Admin User** and **Admin Password**, and (optionally) adjust the
+   **Web Interface Port** (default `3000`) and **DNS Port** (default `5353`).
+3. Enable the service and **Save**.
+4. Click **Open AdGuard Home**, log in with the credentials you just set, and
+   configure filtering, upstreams, clients, etc. in AdGuard Home's own UI.
 
-If you would rather not do the two-step dance, you can simply leave **Run As
-User = `root`** — AdGuard Home will keep working; you just won't get the
-least-privilege benefit.
+That's it — it runs as the unprivileged `adguardhome` user on the DNS port you
+chose. Set **Upstream DNS = `127.0.0.1:53`** (Unbound) in AdGuard Home's UI, or
+seed it that way (the default seed already points upstream at Unbound).
+
+### What the plugin manages vs. what AdGuard Home manages
+
+The plugin is the source of truth for four things and rewrites *only* those keys
+in `AdGuardHome.yaml` on each Save (everything else is preserved byte-for-byte):
+
+- **Admin user / password** — AdGuard Home has no UI to change these.
+- **Web interface port** — AdGuard Home has no UI to change its own admin port.
+- **DNS port** — also settable in AdGuard Home's UI, but the plugin re-asserts
+  it on Save, so manage it here.
+
+Everything else — filters, upstreams, clients, DHCP, rewrites, TLS, etc. — is
+owned by AdGuard Home; configure it in AdGuard Home's own web UI. Leaving the
+**Admin Password** field blank on a later Save keeps the current password.
+
+> **Why AdGuard Home would otherwise need root:** on FreeBSD its *first* launch
+> (before any config exists) hard-requires `uid 0` — `CanBindPrivilegedPorts()`
+> is literally `getuid() == 0` on BSD (portacl/capabilities do not satisfy it).
+> Seeding a config sidesteps that check entirely, which is how the plugin keeps
+> AdGuard Home unprivileged from the very first start.
 
 ### Coexisting with Unbound (recommended topology)
 
